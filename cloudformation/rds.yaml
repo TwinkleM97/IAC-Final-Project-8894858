@@ -1,0 +1,38 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CFN: Public MySQL RDS for assignment demo'
+Parameters:
+  DBName: { Type: String, Default: proj8870db }
+  MasterUsername: { Type: String, Default: adminuser }
+  MasterPassword: { Type: String, NoEcho: true }
+  DBInstanceClass: { Type: String, Default: db.t3.micro }
+  AllocatedStorage: { Type: Number, Default: 20 }
+Resources:
+  VPC: { Type: AWS::EC2::VPC, Properties: { CidrBlock: 10.40.0.0/16, EnableDnsSupport: true, EnableDnsHostnames: true } }
+  SubnetA: { Type: AWS::EC2::Subnet, Properties: { VpcId: !Ref VPC, CidrBlock: 10.40.1.0/24, MapPublicIpOnLaunch: true, AvailabilityZone: !Select [0, !GetAZs ""] } }
+  SubnetB: { Type: AWS::EC2::Subnet, Properties: { VpcId: !Ref VPC, CidrBlock: 10.40.2.0/24, MapPublicIpOnLaunch: true, AvailabilityZone: !Select [1, !GetAZs ""] } }
+  SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open MySQL (demo)
+      VpcId: !Ref VPC
+      SecurityGroupIngress: [ { IpProtocol: tcp, FromPort: 3306, ToPort: 3306, CidrIp: 0.0.0.0/0 } ]
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: { DBSubnetGroupDescription: "subnets", SubnetIds: [ !Ref SubnetA, !Ref SubnetB ] }
+  RDS:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: mysql
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Ref MasterPassword
+      DBName: !Ref DBName
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups: [ !Ref SG ]
+      PubliclyAccessible: true
+      DeletionProtection: false
+      BackupRetentionPeriod: 0
+Outputs:
+  RDSEndpoint: { Value: !GetAtt RDS.Endpoint.Address }
+  RDSPort: { Value: !GetAtt RDS.Endpoint.Port }

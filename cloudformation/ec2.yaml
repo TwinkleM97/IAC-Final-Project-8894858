@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CFN: VPC + EC2 using latest AL2023 AMI from SSM'
+Parameters:
+  KeyName: { Type: AWS::EC2::KeyPair::KeyName }
+  SSHCidr: { Type: String, Default: 0.0.0.0/0 }
+  AmiParam:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+  InstanceType: { Type: String, Default: t3.micro }
+Resources:
+  VPC: { Type: AWS::EC2::VPC, Properties: { CidrBlock: 10.30.0.0/16, EnableDnsSupport: true, EnableDnsHostnames: true, Tags: [ {Key: Name, Value: vpc-cfn } ] } }
+  IGW: { Type: AWS::EC2::InternetGateway }
+  AttachIGW: { Type: AWS::EC2::VPCGatewayAttachment, Properties: { InternetGatewayId: !Ref IGW, VpcId: !Ref VPC } }
+  PublicSubnet: { Type: AWS::EC2::Subnet, Properties: { VpcId: !Ref VPC, CidrBlock: 10.30.1.0/24, MapPublicIpOnLaunch: true } }
+  PublicRT: { Type: AWS::EC2::RouteTable, Properties: { VpcId: !Ref VPC } }
+  PublicRoute: { Type: AWS::EC2::Route, Properties: { RouteTableId: !Ref PublicRT, DestinationCidrBlock: 0.0.0.0/0, GatewayId: !Ref IGW } }
+  RTA: { Type: AWS::EC2::SubnetRouteTableAssociation, Properties: { RouteTableId: !Ref PublicRT, SubnetId: !Ref PublicSubnet } }
+  SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH
+      VpcId: !Ref VPC
+      SecurityGroupIngress: [ { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Ref SSHCidr } ]
+  EC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiParam
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: 0
+          SubnetId: !Ref PublicSubnet
+          GroupSet: [ !Ref SG ]
+Outputs:
+  PublicIP: { Value: !GetAtt EC2.PublicIp, Description: "Public IP" }
