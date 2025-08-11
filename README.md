@@ -8,4 +8,4 @@ Notes I care about:
 - Keep things parameterized; avoid hardcoding.
 - Bucket names must be globally unique → suffix helps.
 
-Cleanup: ; delete CFN stacks: cfn-s3-8894858, cfn-ec2-8894858, cfn-rds-8894858
+Cleanup: `terraform destroy`; delete CFN stacks: cfn-s3-8894858, cfn-ec2-8894858, cfn-rds-8894858
