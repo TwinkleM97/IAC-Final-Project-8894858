@@ -25,3 +25,4 @@ terraform/*.tfvars
 *.swo
 .vscode/
 .idea/
+awscliv2.zip
